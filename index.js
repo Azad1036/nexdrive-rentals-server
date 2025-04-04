@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
@@ -44,6 +44,14 @@ const mongoDbServer = async () => {
     app.get("/all-cars", async (rq, res) => {
       const allCars = await carRentalsCollection.find().toArray();
       res.send(allCars);
+    });
+
+    // Car Details View
+    app.get("/car-details/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await carRentalsCollection.findOne(query);
+      res.send(result);
     });
 
     // Add Car For Database
