@@ -39,6 +39,7 @@ const mongoDbServer = async () => {
     // DataBase Create MongoDB
     const database = client.db("nexDriveDB");
     const carRentalsCollection = database.collection("rentalsCar");
+    const myBookingCollection = database.collection("bookingCar");
 
     // All Car Get in DataBase
     app.get("/all-cars", async (rq, res) => {
@@ -58,7 +59,21 @@ const mongoDbServer = async () => {
     app.post("/car-added", async (req, res) => {
       const carData = req.body;
       const result = await carRentalsCollection.insertOne(carData);
+      res.send(result);
+    });
 
+    // My Booking Data Save Database
+    app.post("/my-booking", async (req, res) => {
+      const bookingBData = req.body;
+      const result = await myBookingCollection.insertOne(bookingBData);
+      res.send(result);
+    });
+
+    // My All Booking list Api
+    app.get("/my-all-booking/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const result = await myBookingCollection.find(query).toArray();
       res.send(result);
     });
   } catch (error) {
