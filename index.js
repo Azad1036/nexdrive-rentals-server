@@ -78,6 +78,14 @@ const mongoDbServer = async () => {
       res.send(result);
     });
 
+    // Delete My Car list
+    app.delete("/delete-myCar/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await carRentalsCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // My Booking Data Save Database
     app.post("/my-booking", async (req, res) => {
       const bookingBData = req.body;
