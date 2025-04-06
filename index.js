@@ -78,6 +78,23 @@ const mongoDbServer = async () => {
       res.send(result);
     });
 
+    // Update MyCar Data
+    app.put("/update-car-details/:id", async (req, res) => {
+      const updateData = req.body;
+      const find = req.params.id;
+      const query = { _id: new ObjectId(find) };
+      const options = { upsert: true };
+      const updateCarDetails = {
+        $set: updateData,
+      };
+      const result = await carRentalsCollection.updateOne(
+        query,
+        updateCarDetails,
+        options
+      );
+      res.send(result);
+    });
+
     // Delete My Car list
     app.delete("/delete-myCar/:id", async (req, res) => {
       const id = req.params.id;
