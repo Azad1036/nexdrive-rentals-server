@@ -55,6 +55,22 @@ const mongoDbServer = async () => {
       res.send(result);
     });
 
+    // My Car list Collection Db
+    app.get("/my-carList/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { "buyer.email": email };
+      const result = await carRentalsCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // My Single Car Update
+    app.get("/update-car/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await carRentalsCollection.findOne(query);
+      res.send(result);
+    });
+
     // Add Car For Database
     app.post("/car-added", async (req, res) => {
       const carData = req.body;
@@ -74,6 +90,14 @@ const mongoDbServer = async () => {
       const email = req.params.email;
       const query = { email };
       const result = await myBookingCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // My Booking Car Remove
+    app.delete("/remove-bookingCar/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await myBookingCollection.deleteOne(query);
       res.send(result);
     });
   } catch (error) {
