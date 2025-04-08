@@ -1,6 +1,9 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+require("dotenv").config();
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
 
@@ -9,11 +12,7 @@ app.get("/", (req, res) => {
 });
 
 const corsOptions = {
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "https://solosphere.web.app",
-  ],
+  origin: ["http://localhost:5173"],
   credentials: true,
   optionSuccessStatus: 200,
 };
@@ -21,6 +20,23 @@ const corsOptions = {
 // MiddleWare
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(cookieParser());
+
+// verify jwt middleware
+const verifyToken = (req, res, next) => {
+  const token = req.cookies?.token;
+
+  // No Token
+  if (!token) return res.status(401).send({ message: "Unknown Access" });
+  jwt.verify(token, process.env.STORE_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "Unknown Access" });
+    }
+    req.user = decoded;
+  });
+
+  next();
+};
 
 // MongoDB Uri
 const uri = "mongodb://localhost:27017";
@@ -41,11 +57,44 @@ const mongoDbServer = async () => {
     const carRentalsCollection = database.collection("rentalsCar");
     const myBookingCollection = database.collection("bookingCar");
 
+    // jwt Token
+    app.post("/jwt", async (req, res) => {
+      const email = req.body;
+
+      // create Token
+      const token = jwt.sign(email, process.env.STORE_KEY, {
+        expiresIn: "10d",
+      });
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        })
+        .send({ success: true });
+    });
+
+    // clear token from cookie
+    app.get("/logoutCookie", async (req, res) => {
+      res
+        .clearCookie("token", {
+          maxAge: 0,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        })
+        .send({ success: true });
+    });
+
     // All Car Get in DataBase
     app.get("/all-cars", async (req, res) => {
       const searchTerm = req.query.searchTerm;
-      console.log(searchTerm);
-      const allCars = await carRentalsCollection.find().toArray();
+      const query = {
+        carModel: {
+          $regex: searchTerm,
+          $options: "i",
+        },
+      };
+      const allCars = await carRentalsCollection.find(query).toArray();
       res.send(allCars);
     });
 
@@ -58,9 +107,12 @@ const mongoDbServer = async () => {
     });
 
     // My Car list Collection Db
-    app.get("/my-carList/:email", async (req, res) => {
+    app.get("/my-carList/:email", verifyToken, async (req, res) => {
+      const decodedEmail = req.user?.email;
       const email = req.params.email;
       const filterDate = req.query.filterDate;
+      
+      // verf
 
       // Store Filter
       let options = {};
@@ -122,6 +174,7 @@ const mongoDbServer = async () => {
     app.post("/my-booking", async (req, res) => {
       const bookingBData = req.body;
       const result = await myBookingCollection.insertOne(bookingBData);
+
       res.send(result);
     });
 
@@ -136,6 +189,19 @@ const mongoDbServer = async () => {
         query.email = email;
       }
       const result = await myBookingCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // Update Car Status
+    app.patch("/update-booking-status/:id", async (req, res) => {
+      const id = req.params.id;
+      const { status } = req.body;
+      const query = { _id: new ObjectId(id) };
+
+      const update = {
+        $set: { status },
+      };
+      const result = await myBookingCollection.updateOne(query, update);
       res.send(result);
     });
 
