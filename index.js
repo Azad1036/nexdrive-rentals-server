@@ -42,7 +42,9 @@ const mongoDbServer = async () => {
     const myBookingCollection = database.collection("bookingCar");
 
     // All Car Get in DataBase
-    app.get("/all-cars", async (rq, res) => {
+    app.get("/all-cars", async (req, res) => {
+      const searchTerm = req.query.searchTerm;
+      console.log(searchTerm);
       const allCars = await carRentalsCollection.find().toArray();
       res.send(allCars);
     });
@@ -58,8 +60,21 @@ const mongoDbServer = async () => {
     // My Car list Collection Db
     app.get("/my-carList/:email", async (req, res) => {
       const email = req.params.email;
+      const filterDate = req.query.filterDate;
+
+      // Store Filter
+      let options = {};
+
+      // Apply filterDate if present
+      if (filterDate) {
+        options.currentData = filterDate === "date-asc" ? 1 : -1;
+      }
       const query = { "buyer.email": email };
-      const result = await carRentalsCollection.find(query).toArray();
+      const result = await carRentalsCollection
+        .find(query)
+        .sort(options)
+        .toArray();
+
       res.send(result);
     });
 
