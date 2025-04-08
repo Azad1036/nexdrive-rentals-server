@@ -128,7 +128,13 @@ const mongoDbServer = async () => {
     // My All Booking list Api
     app.get("/my-all-booking/:email", async (req, res) => {
       const email = req.params.email;
-      const query = { email };
+      const isBuyer = req.query.buyer;
+      let query = {};
+      if (isBuyer) {
+        query.buyer = email;
+      } else {
+        query.email = email;
+      }
       const result = await myBookingCollection.find(query).toArray();
       res.send(result);
     });
@@ -140,6 +146,8 @@ const mongoDbServer = async () => {
       const result = await myBookingCollection.deleteOne(query);
       res.send(result);
     });
+
+    // Manage All Booking Status;
   } catch (error) {
     console.log(error);
   }
