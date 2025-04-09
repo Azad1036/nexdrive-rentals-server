@@ -12,7 +12,7 @@ app.get("/", (req, res) => {
 });
 
 const corsOptions = {
-  origin: ["http://localhost:5173"],
+  origin: ["http://localhost:5173", "http://localhost:5174"],
   credentials: true,
   optionSuccessStatus: 200,
 };
@@ -21,22 +21,6 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
-
-// verify jwt middleware
-const verifyToken = (req, res, next) => {
-  const token = req.cookies?.token;
-
-  // No Token
-  if (!token) return res.status(401).send({ message: "Unknown Access" });
-  jwt.verify(token, process.env.STORE_KEY, (err, decoded) => {
-    if (err) {
-      return res.status(401).send({ message: "Unknown Access" });
-    }
-    req.user = decoded;
-  });
-
-  next();
-};
 
 // MongoDB Uri
 const uri = "mongodb://localhost:27017";
@@ -56,34 +40,6 @@ const mongoDbServer = async () => {
     const database = client.db("nexDriveDB");
     const carRentalsCollection = database.collection("rentalsCar");
     const myBookingCollection = database.collection("bookingCar");
-
-    // jwt Token
-    app.post("/jwt", async (req, res) => {
-      const email = req.body;
-
-      // create Token
-      const token = jwt.sign(email, process.env.STORE_KEY, {
-        expiresIn: "10d",
-      });
-      res
-        .cookie("token", token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-        })
-        .send({ success: true });
-    });
-
-    // clear token from cookie
-    app.get("/logoutCookie", async (req, res) => {
-      res
-        .clearCookie("token", {
-          maxAge: 0,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-        })
-        .send({ success: true });
-    });
 
     // All Car Get in DataBase
     app.get("/all-cars", async (req, res) => {
@@ -106,15 +62,17 @@ const mongoDbServer = async () => {
       res.send(result);
     });
 
-    // My Car list Collection Db
-    app.get("/my-carList/:email", verifyToken, async (req, res) => {
-      const decodedEmail = req.user?.email;
-      const email = req.params.email;
-      const filterDate = req.query.filterDate;
-      
-      // verf
+    app.get("/recent-allCars", async (req, res) => {
+      const result = await carRentalsCollection.find().limit(6).toArray();
+      res.send(result);
+    });
 
-      // Store Filter
+    // My Car list Collection Db
+    app.get("/my-carList/:email", async (req, res) => {
+      const email = req.params.email;
+
+      const filterDate = req.query.filterDate;
+
       let options = {};
 
       // Apply filterDate if present
@@ -173,7 +131,28 @@ const mongoDbServer = async () => {
     // My Booking Data Save Database
     app.post("/my-booking", async (req, res) => {
       const bookingBData = req.body;
+
+      // Find User Only One Bit
+      const query = { email: bookingBData.email, carId: bookingBData.carId };
+      const alreadyExit = await myBookingCollection.findOne(query);
+
+      if (alreadyExit)
+        return res.status(400).send("You Already This Car Booking");
+
+      // Save Dd
       const result = await myBookingCollection.insertOne(bookingBData);
+
+      // Update Booking Count
+      const filter = { _id: new ObjectId(bookingBData.carId) };
+      const updateCount = {
+        $inc: {
+          set_count: 1,
+        },
+      };
+      const updateBookingCount = await carRentalsCollection.updateOne(
+        filter,
+        updateCount
+      );
 
       res.send(result);
     });
@@ -181,7 +160,9 @@ const mongoDbServer = async () => {
     // My All Booking list Api
     app.get("/my-all-booking/:email", async (req, res) => {
       const email = req.params.email;
+      
       const isBuyer = req.query.buyer;
+      console.log(email);
       let query = {};
       if (isBuyer) {
         query.buyer = email;
@@ -191,6 +172,10 @@ const mongoDbServer = async () => {
       const result = await myBookingCollection.find(query).toArray();
       res.send(result);
     });
+
+
+
+ 
 
     // Update Car Status
     app.patch("/update-booking-status/:id", async (req, res) => {
