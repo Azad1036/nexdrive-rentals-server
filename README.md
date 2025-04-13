@@ -4,7 +4,7 @@ This is the **backend** of the NextDrive Rentals platform, built with Node.js, E
 
 🌐 **[Live Site URL](https://next-zen.web.app/)**  
 🗃️ **[Client Repo](https://github.com/Azad1036/Next-Zen-Client)**  
-🛠️ **Backend Repo**: `<your-backend-repo-url>`
+🛠️ **Backend Repo**: `https://github.com/Azad1036/nexdrive-rentals-server.git`
 
 ---
 
@@ -117,4 +117,4 @@ The backend is designed to fulfill the **Assignment Category 15** requirements f
 
 - 🔗 **Client Repo**: [https://github.com/Azad1036/Next-Zen-Client](https://github.com/Azad1036/Next-Zen-Client)
 - 🔗 **Live Site**: [https://next-zen.web.app/](https://next-zen.web.app/)
-- 🔗 **Backend Repo**: `<your-backend-repo-url>`
+- 🔗 **Backend Repo**: `https://github.com/Azad1036/nexdrive-rentals-server.git`

@@ -2,26 +2,30 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
-const jwt = require("jsonwebtoken");
-const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
 
 const corsOptions = {
-  origin: ["http://localhost:5173", "http://localhost:5174"],
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://nexdrive-rentals.web.app/",
+    "https://nexdrive-rentals.firebaseapp.com/",
+  ],
   credentials: true,
   optionSuccessStatus: 200,
 };
 
-// MiddleWare
 app.use(cors(corsOptions));
 app.use(express.json());
-app.use(cookieParser());
+
+app.get("/", (req, res) => {
+  res.send("API is working!");
+});
 
 // MongoDB Uri
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@firstproject.mz7uu.mongodb.net/?retryWrites=true&w=majority&appName=FirstProject`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -30,31 +34,29 @@ const client = new MongoClient(uri, {
   },
 });
 
-const mongoDbServer = async () => {
+async function run() {
   try {
-    // DataBase Create MongoDB
+    // await client.connect(); // 🟢 Important!
+
     const database = client.db("nexDriveDB");
     const carRentalsCollection = database.collection("rentalsCar");
     const myBookingCollection = database.collection("bookingCar");
 
-    // All Car Get in DataBase
+    // ✅ All routes inside this block now
     app.get("/all-cars", async (req, res) => {
-      const searchTerm = req.query.searchTerm;
+      const searchTerm = req.query.searchTerm || "";
       const query = {
-        carModel: {
-          $regex: searchTerm,
-          $options: "i",
-        },
+        carModel: { $regex: searchTerm, $options: "i" },
       };
       const allCars = await carRentalsCollection.find(query).toArray();
       res.send(allCars);
     });
 
-    // Car Details View
     app.get("/car-details/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await carRentalsCollection.findOne(query);
+      const result = await carRentalsCollection.findOne({
+        _id: new ObjectId(id),
+      });
       res.send(result);
     });
 
@@ -63,51 +65,39 @@ const mongoDbServer = async () => {
       res.send(result);
     });
 
-    // My Car list Collection Db
     app.get("/my-carList/:email", async (req, res) => {
       const email = req.params.email;
-
       const filterDate = req.query.filterDate;
-
       let options = {};
-
-      // Apply filterDate if present
-      if (filterDate) {
-        options.currentData = filterDate === "date-asc" ? 1 : -1;
-      }
+      if (filterDate) options.currentData = filterDate === "date-asc" ? 1 : -1;
       const query = { "buyer.email": email };
       const result = await carRentalsCollection
         .find(query)
         .sort(options)
         .toArray();
-
       res.send(result);
     });
 
-    // My Single Car Update
     app.get("/update-car/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await carRentalsCollection.findOne(query);
+      const result = await carRentalsCollection.findOne({
+        _id: new ObjectId(id),
+      });
       res.send(result);
     });
 
-    // Add Car For Database
     app.post("/car-added", async (req, res) => {
       const carData = req.body;
       const result = await carRentalsCollection.insertOne(carData);
       res.send(result);
     });
 
-    // Update MyCar Data
     app.put("/update-car-details/:id", async (req, res) => {
       const updateData = req.body;
       const find = req.params.id;
       const query = { _id: new ObjectId(find) };
       const options = { upsert: true };
-      const updateCarDetails = {
-        $set: updateData,
-      };
+      const updateCarDetails = { $set: updateData };
       const result = await carRentalsCollection.updateOne(
         query,
         updateCarDetails,
@@ -116,47 +106,32 @@ const mongoDbServer = async () => {
       res.send(result);
     });
 
-    // Delete My Car list
     app.delete("/delete-myCar/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await carRentalsCollection.deleteOne(query);
+      const result = await carRentalsCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
       res.send(result);
     });
 
-    // My Booking Data Save Database
     app.post("/my-booking", async (req, res) => {
       const bookingBData = req.body;
-
-      // Find User Only One Bit
       const query = { email: bookingBData.email, carId: bookingBData.carId };
       const alreadyExit = await myBookingCollection.findOne(query);
-
       if (alreadyExit)
         return res.status(400).send("You Already This Car Booking");
 
-      // Save Dd
       const result = await myBookingCollection.insertOne(bookingBData);
 
-      // Update Booking Count
       const filter = { _id: new ObjectId(bookingBData.carId) };
-      const updateCount = {
-        $inc: {
-          set_count: 1,
-        },
-      };
-      const updateBookingCount = await carRentalsCollection.updateOne(
-        filter,
-        updateCount
-      );
+      const updateCount = { $inc: { set_count: 1 } };
+      await carRentalsCollection.updateOne(filter, updateCount);
 
       res.send(result);
     });
 
-    // My All Booking list Api
     app.get("/my-all-booking/:email", async (req, res) => {
       const email = req.params.email;
-
       const isBuyer = req.query.buyer;
       let query = {};
       if (isBuyer) {
@@ -168,47 +143,41 @@ const mongoDbServer = async () => {
       res.send(result);
     });
 
-    // Update Car Status
     app.patch("/update-booking-status/:id", async (req, res) => {
       const id = req.params.id;
       const { status } = req.body;
-      const query = { _id: new ObjectId(id) };
-
-      const update = {
-        $set: { status },
-      };
-      const result = await myBookingCollection.updateOne(query, update);
+      const result = await myBookingCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status } }
+      );
       res.send(result);
     });
 
-    // Update Date
     app.patch("/update-booking-date/:id", async (req, res) => {
-      const date = req.body;
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const update = {
-        $set: date,
-      };
-      const result = await myBookingCollection.updateOne(query, update);
+      const date = req.body;
+      const result = await myBookingCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: date }
+      );
       res.send(result);
     });
 
-    // My Booking Car Remove
     app.delete("/remove-bookingCar/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await myBookingCollection.deleteOne(query);
+      const result = await myBookingCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
       res.send(result);
     });
 
-    // Manage All Booking Status;
+    // 🔥 Start server ONLY after routes are ready
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+    });
   } catch (error) {
-    console.log(error);
+    console.error("Error connecting to DB or setting up routes:", error);
   }
-};
+}
 
-mongoDbServer();
-
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});
+run(); // 👈 This kicks off the server setup
