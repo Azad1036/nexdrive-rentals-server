@@ -7,10 +7,6 @@ const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
 
-app.get("/", (req, res) => {
-  res.send("Hello World!");
-});
-
 const corsOptions = {
   origin: ["http://localhost:5173", "http://localhost:5174"],
   credentials: true,
@@ -23,7 +19,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 // MongoDB Uri
-const uri = "mongodb://localhost:27017";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@firstproject.mz7uu.mongodb.net/?retryWrites=true&w=majority&appName=FirstProject`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -160,9 +156,8 @@ const mongoDbServer = async () => {
     // My All Booking list Api
     app.get("/my-all-booking/:email", async (req, res) => {
       const email = req.params.email;
-      
+
       const isBuyer = req.query.buyer;
-      console.log(email);
       let query = {};
       if (isBuyer) {
         query.buyer = email;
@@ -173,10 +168,6 @@ const mongoDbServer = async () => {
       res.send(result);
     });
 
-
-
- 
-
     // Update Car Status
     app.patch("/update-booking-status/:id", async (req, res) => {
       const id = req.params.id;
@@ -185,6 +176,18 @@ const mongoDbServer = async () => {
 
       const update = {
         $set: { status },
+      };
+      const result = await myBookingCollection.updateOne(query, update);
+      res.send(result);
+    });
+
+    // Update Date
+    app.patch("/update-booking-date/:id", async (req, res) => {
+      const date = req.body;
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const update = {
+        $set: date,
       };
       const result = await myBookingCollection.updateOne(query, update);
       res.send(result);
