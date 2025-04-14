@@ -9,11 +9,12 @@ const corsOptions = {
   origin: [
     "http://localhost:5173",
     "http://localhost:5174",
-    "https://nexdrive-rentals.web.app/",
-    "https://nexdrive-rentals.firebaseapp.com/",
+    "https://nexdrive-rentals.web.app",
+    "https://quiet-mooncake-d6e5db.netlify.app",
+    "https://nexdrive-rentals.firebaseapp.com",
   ],
   credentials: true,
-  optionSuccessStatus: 200,
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
